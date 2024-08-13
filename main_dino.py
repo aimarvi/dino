@@ -33,6 +33,7 @@ from torchvision import models as torchvision_models
 import utils
 import vision_transformer as vits
 from vision_transformer import DINOHead
+from custom_data import CustomImageFolder
 
 torchvision_archs = sorted(name for name in torchvision_models.__dict__
     if name.islower() and not name.startswith("__")
@@ -103,6 +104,7 @@ def get_args_parser():
     parser.add_argument('--optimizer', default='adamw', type=str,
         choices=['adamw', 'sgd', 'lars'], help="""Type of optimizer. We recommend using adamw with ViTs.""")
     parser.add_argument('--drop_path_rate', type=float, default=0.1, help="stochastic depth rate")
+    parser.add_argument('--meta_file', type=str, help="custom dataset")
 
     # Multi-crop parameters
     parser.add_argument('--global_crops_scale', type=float, nargs='+', default=(0.4, 1.),
@@ -142,7 +144,10 @@ def train_dino(args):
         args.local_crops_scale,
         args.local_crops_number,
     )
-    dataset = datasets.ImageFolder(args.data_path, transform=transform)
+    if args.meta_file:
+        dataset = CustomImageFolder(args.data_path, args.meta_file, transform=transform)
+    else:
+        dataset = datasets.ImageFolder(args.data_path, transform=transform)
     sampler = torch.utils.data.DistributedSampler(dataset, shuffle=True)
     data_loader = torch.utils.data.DataLoader(
         dataset,
